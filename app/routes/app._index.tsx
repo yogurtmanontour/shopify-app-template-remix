@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { useFetcher } from "@remix-run/react";
+import { useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -12,15 +12,24 @@ import {
   List,
   Link,
   InlineStack,
+  EmptyState,
+  IndexTable,
+  Thumbnail,
+  Icon,
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { AlertDiamondIcon, ImageIcon } from "@shopify/polaris-icons";
+import { GetItem, GetManyItems, ItemType } from "app/models/Item.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-
-  return null;
-};
+export async function loader({ request } : LoaderFunctionArgs) {
+    const { admin, session } = await authenticate.admin(request);
+    const Items : ItemType[] = await GetManyItems(session.shop, admin.graphql);
+  
+    return Response.json({
+      Items,
+    });
+  }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -62,6 +71,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const product = responseJson.data!.productCreate!.product!;
   const variantId = product.variants.edges[0]!.node!.id!;
 
+    
   const variantResponse = await admin.graphql(
     `#graphql
     mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
@@ -91,6 +101,78 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   };
 };
 
+const EmptyQRCodeState = ({ onAction } :any) => (
+    <EmptyState
+      heading="Create serialised inventory"
+      action={{
+        content: "Create an Item",
+        onAction,
+      }}
+      image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+    >
+      <p>Allow each product to hav emultiple items associated each with a unique serial number</p>
+    </EmptyState>
+);
+
+const QRTable = ({ Items }:any) => (
+    <IndexTable
+        resourceName={{
+        singular: "Item",
+        plural: "Items",
+        }}
+        itemCount={Items.length}
+        headings={[
+        { title: "Thumbnail", hidden: true },
+        { title: "UID"},
+        { title: "Serial Number" },
+        { title: "Product" },
+        ]}
+        selectable={false}
+    >
+        {Items.map((Item:any) => (
+            <QRTableRow key={Item.id} Item={Item} />
+        ))}
+    </IndexTable>
+);
+
+function truncate(str : String, { length = 25 } = {}) {
+    if (!str) return "";
+    if (str.length <= length) return str;
+    return str.slice(0, length) + "…";
+  }
+
+const QRTableRow = ({ Item }:any) => (
+    <IndexTable.Row id={Item.id} position={Item.id}>
+        <IndexTable.Cell>
+            <Thumbnail
+                source={Item.productImage || ImageIcon}
+                alt={Item.productTitle}
+                size="small"
+            />
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            <Text as={"p"}>{Item.ID}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            <Text as={"p"}>{Item.SerialNumber}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            {Item.productDeleted ? (
+            <InlineStack align="start" gap="200">
+                <span style={{ width: "20px" }}>
+                <Icon source={AlertDiamondIcon} tone="critical" />
+                </span>
+                <Text tone="critical" as="span">
+                product has been deleted
+                </Text>
+            </InlineStack>
+            ) : (
+            truncate(Item.productTitle)
+            )}
+        </IndexTable.Cell>
+    </IndexTable.Row>
+  );
+
 export default function Index() {
   const fetcher = useFetcher<typeof action>();
 
@@ -110,8 +192,16 @@ export default function Index() {
   }, [productId, shopify]);
   const generateProduct = () => fetcher.submit({}, { method: "POST" });
 
+  const  {Items} : any = useLoaderData();
+  const navigate = useNavigate();
+
   return (
     <Page>
+        <ui-title-bar title="Create new QR code">
+            <button variant="breadcrumb" onClick={() => navigate("/app/items/new")}>
+            QR codes
+            </button>
+        </ui-title-bar>
       <TitleBar title="Remix app template">
         <button variant="primary" onClick={generateProduct}>
           Generate a product
@@ -225,6 +315,15 @@ export default function Index() {
               </BlockStack>
             </Card>
           </Layout.Section>
+          <Layout.Section>
+                <Card padding="0">
+                    {Items.length === 0 ? (
+                    <EmptyQRCodeState onAction={() => navigate("qrcodes/new")} />
+                    ) : (
+                    <QRTable Items={Items} />
+                    )}
+                </Card>
+            </Layout.Section>
           <Layout.Section variant="oneThird">
             <BlockStack gap="500">
               <Card>

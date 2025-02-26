@@ -30,3 +30,31 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Item {
+  ID               String       @id
+  PurchaseItem     PurchaseItem @relation(fields: [PurchaseItemID], references: [ID])
+  PurchaseItemID   Int
+  Shop             String
+  ProductID        String
+  ProductVariantID String
+  ProductHandle    String
+  SerialNumber     String
+}
+
+model PurchaseOrder {
+  ID            Int            @id @default(autoincrement())
+  InvoiceURL    String
+  DatePaid      DateTime?
+  DateReceived  DateTime?
+  PurchaseItems PurchaseItem[]
+}
+
+model PurchaseItem {
+  ID              Int           @id @default(autoincrement())
+  PurchaseOrder   PurchaseOrder @relation(fields: [PurchaseorderID], references: [ID])
+  PurchaseorderID Int
+  Title           String
+  Cost            Float
+  Items           Item[]
+}
