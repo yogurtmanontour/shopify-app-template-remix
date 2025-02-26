@@ -2,9 +2,12 @@ import { LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { Modal, TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { BlockStack, Box, Button, Card, DescriptionList, EmptyState, Form, FormLayout, IndexTable, InlineGrid, Layout, Link, Page, Text, TextField } from "@shopify/polaris";
-import { CheckIcon, EditIcon } from '@shopify/polaris-icons';
+import { CheckIcon, EditIcon, PlusIcon } from '@shopify/polaris-icons';
 import { PurchaseItemType } from "app/models/PurchaseItem.server";
 import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
+
+const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",currency:"GBP"})
+
 
 export async function loader({ request, params } : LoaderFunctionArgs){
     const PurchaseOrderDTO : PurchaseOrderType | null = await GetPurchaseOrder(Number(params.id));
@@ -28,18 +31,10 @@ const PITableRow = (({PurchaseItem} : {PurchaseItem : PurchaseItemType})=>(
             <Text as="p">{PurchaseItem.ID}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            <Text as="p" numeric>{PurchaseItem.Cost}</Text>
+            <Text as="p" numeric>{CurrencyFormatter.format(PurchaseItem.Cost)}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
             <Text as="p">{PurchaseItem.Title}</Text>
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-            <Button
-                icon={EditIcon}
-                variant="tertiary"
-                url={"/app/purchaseitems/"+PurchaseItem.ID}
-                accessibilityLabel="Edit"
-            />
         </IndexTable.Cell>
     </IndexTable.Row>
 ))
@@ -51,8 +46,7 @@ const PITable = (({PurchaseItems} : {PurchaseItems : PurchaseItemType[]})=>(
         headings={[
             {title:"ID"},
             {title:"Cost"},
-            {title:"Title"},
-            {title:"edit", alignment:"end", hidden:true}
+            {title:"Title"}
         ]}
         selectable={false}
     >
@@ -73,8 +67,6 @@ export default function PurchaseItems(){
         PurchaseItems: PurchaseOrderDTO.PurchaseItems,
         TotalCost: PurchaseOrderDTO.TotalCost
     }
-
-    const ShopBridge = useAppBridge()
 
     return(
         <Page
@@ -118,8 +110,13 @@ export default function PurchaseItems(){
                 </Layout.Section>
                 <Layout.Section>
                     <Card>
-                        <Text as="h2" variant="headingLg" >Purchase Items</Text>
-                        <PITable PurchaseItems={CurrentOrder.PurchaseItems}/>
+                        <BlockStack gap="200">
+                            <InlineGrid columns="1fr auto">
+                                <Text as="h2" variant="headingLg" >Purchase Items</Text>
+                                <Button accessibilityLabel="Add variant" icon={PlusIcon} url={'/app/createPurchaseItem/'+CurrentOrder.ID}>Add Item</Button>
+                            </InlineGrid>
+                            <PITable PurchaseItems={CurrentOrder.PurchaseItems}/>
+                        </BlockStack>
                     </Card>         
                 </Layout.Section>
             </Layout>
