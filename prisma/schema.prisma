@@ -45,15 +45,17 @@ model Item {
 model PurchaseOrder {
   ID            Int            @id @default(autoincrement())
   InvoiceURL    String
+  HasPaid   Boolean @default(false)
   DatePaid      DateTime?
+  HasReceived   Boolean @default(false)
   DateReceived  DateTime?
   PurchaseItems PurchaseItem[]
 }
 
 model PurchaseItem {
   ID              Int           @id @default(autoincrement())
-  PurchaseOrder   PurchaseOrder @relation(fields: [PurchaseorderID], references: [ID])
-  PurchaseorderID Int
+  PurchaseOrder   PurchaseOrder @relation(fields: [PurchaseOrderID], references: [ID])
+  PurchaseOrderID Int
   Title           String
   Cost            Float
   Items           Item[]

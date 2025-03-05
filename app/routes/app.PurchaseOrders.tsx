@@ -15,7 +15,7 @@ const TableEmptyState = (
     <EmptyState
         heading="Create some purchase orders to get started"
         image = "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-        action={{content:"Create", url:"/app/purchaseorders/new"}}
+        action={{content:"Create", url:"/app/purchaseorders/edit/new"}}
     />
 )
 const POTable = (({PurchaseOrders} : {PurchaseOrders : PurchaseOrderType[]})=>(
@@ -39,7 +39,7 @@ const POTable = (({PurchaseOrders} : {PurchaseOrders : PurchaseOrderType[]})=>(
 const POTableRow = (({PurchaseOrder} : {PurchaseOrder : PurchaseOrderType})=>(
     <IndexTable.Row position={PurchaseOrder.ID} id={String(PurchaseOrder.ID)} key={PurchaseOrder.ID}>
         <IndexTable.Cell>
-            <Link dataPrimaryLink monochrome removeUnderline url={"/app/viewpurchaseorder/"+PurchaseOrder.ID}>
+            <Link dataPrimaryLink monochrome removeUnderline url={"/app/purchaseorders/"+PurchaseOrder.ID}>
                 <Text as="p">{PurchaseOrder.ID}</Text>
             </Link>
         </IndexTable.Cell>
@@ -64,7 +64,9 @@ export default function PurchaseOrders() {
             DatePaid: new Date(Value.DatePaid),
             DateReceived: new Date(Value.DateReceived),
             PurchaseItems: [],
-            TotalCost: 0
+            TotalCost: 0,
+            HasPaid: Value.HasPaid,
+            HasReceived: Value.HasReceived
         }
         return Post
     })
@@ -74,7 +76,7 @@ export default function PurchaseOrders() {
             fullWidth
             title="Purchase Orders"
             backAction={{content: 'Home', url: '/app'}}
-            primaryAction={{content:'Create', url:'/app/createpurchaseorder'}}
+            primaryAction={{content:'Create', url:'/app/purchaseorders/edit/new'}}
         >
             <Card>
                 <POTable PurchaseOrders={Processed}/>

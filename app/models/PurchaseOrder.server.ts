@@ -4,10 +4,20 @@ import { PurchaseItemType } from "./PurchaseItem.server";
 export interface PurchaseOrderType {
     ID : number;
     InvoiceURL : string;
+    HasPaid : boolean; 
     DatePaid : Date | null;
+    HasReceived : boolean;
     DateReceived: Date | null;
     PurchaseItems: PurchaseItemType[];
     TotalCost: number;
+}
+
+export interface CreatePurchaseOrderType {
+    InvoiceURL : string;
+    HasPaid : boolean; 
+    DatePaid : Date | null;
+    HasReceived : boolean;
+    DateReceived: Date | null;
 }
 
 export async function GetPurchaseOrder (ID: number): Promise<PurchaseOrderType | null> {
@@ -21,7 +31,9 @@ export async function GetPurchaseOrder (ID: number): Promise<PurchaseOrderType |
             let Output : PurchaseOrderType = {
                 ID: Value.ID,
                 InvoiceURL: Value.InvoiceURL,
+                HasPaid: Value.HasPaid,
                 DatePaid: Value.DatePaid,
+                HasReceived: Value.HasReceived,
                 DateReceived: Value.DateReceived,
                 PurchaseItems: Value.PurchaseItems,
                 TotalCost: TotalCost
@@ -47,7 +59,9 @@ export async function GetPurchaseOrders(): Promise<Array<PurchaseOrderType>> {
                 let Output2 : PurchaseOrderType = {
                     ID: Value.ID,
                     InvoiceURL: Value.InvoiceURL,
+                    HasPaid: Value.HasPaid,
                     DatePaid: Value.DatePaid,
+                    HasReceived: Value.HasReceived,
                     DateReceived: Value.DateReceived,
                     PurchaseItems: [],
                     TotalCost: TotalCost

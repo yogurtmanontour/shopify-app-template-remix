@@ -1,52 +1,66 @@
 import { BlockStack, Box, Card, DatePicker, FormLayout, Icon, Layout, Page, PageActions, Popover, Text, TextField } from "@shopify/polaris";
 
 import db from "../db.server";
-import { redirect, useLoaderData, useSubmit } from "@remix-run/react";
+import { redirect, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useState } from "react";
-import { PurchaseItemType } from "app/models/PurchaseItem.server";
+import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 
 import CustomDatePicker from "app/Components/DatePicker";
+import { CreatePurchaseItemType, GetPurchaseItem, PurchaseItemType } from "app/models/PurchaseItem.server";
 
 export async function loader({ request, params } : LoaderFunctionArgs){
+    let PurchaseItemDTO : PurchaseItemType | null = {
+        ID: 0,
+        PurchaseOrderID: 0,
+        Title: "",
+        Cost: 0
+    }
 
-    const PurchaseOrderID = params.id;
+    if (params.id!="new") {
+        PurchaseItemDTO = await GetPurchaseItem(Number(params.id));
+    }
 
     return Response.json({
-        PurchaseOrderID
+        PurchaseItemDTO
     })
 }
 
 export async function action({ request, params } : ActionFunctionArgs){
-    
-    const data : any = {
-        ...Object.fromEntries(await request.formData())
-    };
-    data.Cost = Number(data.Cost)
-    data.PurchaseorderID = Number(data.PurchaseorderID)
-    const CurrentItem = await db.purchaseItem.create({data})
 
-    return redirect(`/app/viewpurchaseItem/${CurrentItem.ID}`);
+    const RequestData = await request.formData()
+    
+    const data : CreatePurchaseItemType = {
+        PurchaseOrderID: Number(RequestData.get("PurchaseOrderID")),
+        Title: String(RequestData.get("Title")) || "",
+        Cost: Number(RequestData.get("Cost"))
+    };
+
+    const CurrentItem = params.id=="new" ? await db.purchaseItem.create({data}) : await db.purchaseItem.update({ where: { ID: Number(params.id)}, data })
+    
+
+    return redirect(`/app/purchaseorders/${data.PurchaseOrderID}`);
 }
 
-export default function CreatePurchaseItem(){
+export default function EditPurchaseOrder(){
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    const {PurchaseOrderID} : {PurchaseOrderID : string} = useLoaderData()
-
-    const DefaultItem : PurchaseItemType = {
-        ID: 0,
-        Title: "",
-        Cost: 0
+    const {PurchaseItemDTO} : any = useLoaderData()
+        const CurrentPurchaseItem : PurchaseItemType = {
+            ID: PurchaseItemDTO.ID,
+            Title: PurchaseItemDTO.Title,
+            Cost: PurchaseItemDTO.Cost,
+            PurchaseOrderID: PurchaseItemDTO.PurchaseOrderID
     }
     
-    const [FormState,SetFormState] = useState(DefaultItem)
+    const [FormState,SetFormState] = useState(CurrentPurchaseItem)
 
     const submit = useSubmit();
     function SaveData(){
         const data : any = {
             Title: FormState.Title,
-            Cost: Number(FormState.Cost),
-            PurchaseorderID: PurchaseOrderID
+            Cost: FormState.Cost,
+            PurchaseOrderID: searchParams.get("PurchaseOrder") || FormState.PurchaseOrderID
         }
         submit(data, { method: "post" })
     }
@@ -54,19 +68,19 @@ export default function CreatePurchaseItem(){
     return(
         <Page
             
-            title="Create Purchase Item"
-            backAction={{content: 'Purchase Items', url: '/app/purchaseItems'}}
+            title={CurrentPurchaseItem.ID==0? "Create Purchase Item" : "Edit Purchase Item"}
+            backAction={{content: 'Purchase Order', url: `/app/purchaseorders/${CurrentPurchaseItem.PurchaseOrderID}`}}
         >
             <Layout>
                 <Layout.Section>
                     <Card>
-                    <Text as="h2" variant="headingLg">New Purchase Item</Text>
+                    <Text as="h2" variant="headingLg">{CurrentPurchaseItem.ID==0? "New Purchase Item" : "Purchase Item: "+CurrentPurchaseItem.ID}</Text>
                     <Box paddingBlock="200">
                         <FormLayout>
-                            <BlockStack gap="200">
+                            <BlockStack gap="400">
                                 <TextField 
-                                    id="InvoiceURL"
-                                    label="Invoice URL"
+                                    id="Title"
+                                    label="Title"
                                     autoComplete="off"
                                     value={FormState.Title}
                                     onChange={Title=>{
@@ -87,7 +101,6 @@ export default function CreatePurchaseItem(){
                             </BlockStack>
                         </FormLayout>
                     </Box>
-                        
                     </Card>
                 </Layout.Section>
                 <Layout.Section>

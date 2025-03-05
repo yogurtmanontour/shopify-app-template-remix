@@ -1,10 +1,9 @@
-import { Popover, TextField, Icon, Card, DatePicker, InlineStack, Button, Grid, InlineGrid } from "@shopify/polaris";
+import { Popover, TextField, Icon, Card, DatePicker, InlineStack, Button, Grid, InlineGrid, BlockStack, Checkbox } from "@shopify/polaris";
 import { CalendarIcon, UndoIcon } from "@shopify/polaris-icons";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
-export default function CustomDatePicker({Label,selectedDate,setSelectedDate} : {Label:string,selectedDate:Date,setSelectedDate:Dispatch<SetStateAction<Date>>}){
+export default function CustomDatePicker({Label,selectedDate,setSelectedDate, DateSelected, SetDateSelected} : {Label:string,selectedDate:Date,setSelectedDate:Dispatch<SetStateAction<Date>>,DateSelected:boolean,SetDateSelected:Dispatch<SetStateAction<boolean>>}){
     const [visible, setVisible] = useState(false);
-    const [DateSelected,SetDateSelected] = useState(false);
     const [{ month, year }, setDate] = useState({
         month: selectedDate.getMonth(),
         year: selectedDate.getFullYear(),
@@ -35,7 +34,7 @@ export default function CustomDatePicker({Label,selectedDate,setSelectedDate} : 
 
 
     return(
-       <InlineGrid columns="1fr auto">
+        <BlockStack>
             <Popover
                 active={visible}
                 autofocusTarget="none"
@@ -54,6 +53,7 @@ export default function CustomDatePicker({Label,selectedDate,setSelectedDate} : 
                     onFocus={() => setVisible(true)}
                     onChange={handleInputValueChange}
                     autoComplete="off"
+                    disabled={!DateSelected}
                     />
                     }
                 >
@@ -67,9 +67,13 @@ export default function CustomDatePicker({Label,selectedDate,setSelectedDate} : 
                         />
                     </Card>
             </Popover>
-            <Button icon={UndoIcon} variant="tertiary" onClick={()=>{
-                SetDateSelected(false)
-            }}/>
-        </InlineGrid>
+            <Checkbox 
+                label="Select Date"
+                checked={DateSelected}
+                onChange={()=>{
+                    SetDateSelected(!DateSelected)
+                }}
+            />
+        </BlockStack>
     )
 }
