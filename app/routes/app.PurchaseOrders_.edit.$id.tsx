@@ -12,12 +12,15 @@ export async function loader({ request, params } : LoaderFunctionArgs){
     let PurchaseOrderDTO : PurchaseOrderType | null = {
         ID: 0,
         InvoiceURL: "",
-        DatePaid: null,
-        DateReceived: null,
+        DatePaid: new(Date),
+        DateReceived: new(Date),
         PurchaseItems: [],
         TotalCost: 0,
         HasPaid: false,
-        HasReceived: false
+        HasReceived: false,
+        Description: "",
+        PurchaseCosts: [],
+        EstimatedCosts: 0
     }
 
     if (params.id!="new") {
@@ -34,6 +37,7 @@ export async function action({ request, params } : ActionFunctionArgs){
     const RequestData = await request.formData()
 
     const data : CreatePurchaseOrderType = {
+        Description: String(RequestData.get("Description")) || "",
         InvoiceURL: String(RequestData.get("InvoiceURL")) || "",
         HasPaid: JSON.parse(String(RequestData.get("HasPaid"))),
         DatePaid: new Date(String(RequestData.get("DatePaid"))),
@@ -51,13 +55,16 @@ export default function EditPurchaseOrder(){
     const {PurchaseOrderDTO} : any = useLoaderData()
     const CurrentOrder : PurchaseOrderType = {
         ID: PurchaseOrderDTO.ID,
+        Description: PurchaseOrderDTO.Description,
         InvoiceURL: PurchaseOrderDTO.InvoiceURL,
-        DatePaid: null,
-        DateReceived: null,
+        DatePaid: PurchaseOrderDTO.DatePaid,
+        DateReceived: PurchaseOrderDTO.DateReceived,
         PurchaseItems: PurchaseOrderDTO.PurchaseItems,
         TotalCost: PurchaseOrderDTO.TotalCost,
         HasPaid: PurchaseOrderDTO.HasPaid,
-        HasReceived: PurchaseOrderDTO.HasReceived
+        HasReceived: PurchaseOrderDTO.HasReceived,
+        PurchaseCosts: [],
+        EstimatedCosts: 0
     }
 
     
@@ -72,6 +79,7 @@ export default function EditPurchaseOrder(){
     const submit = useSubmit();
     function SaveData(){
         const data : any = {
+            Description: FormState.Description,
             InvoiceURL: FormState.InvoiceURL,
             DatePaid: PaidDate.toISOString(),
             DateReceived: ReceivedDate.toISOString(),
@@ -96,6 +104,15 @@ export default function EditPurchaseOrder(){
                     <Box paddingBlock="200">
                         <FormLayout>
                             <BlockStack gap="400">
+                                <TextField 
+                                    id="Description"
+                                    label="Description"
+                                    autoComplete="off"
+                                    value={FormState.Description}
+                                    onChange={Description=>{
+                                        SetFormState({...FormState,Description})
+                                    }}
+                                />
                                 <TextField 
                                     id="InvoiceURL"
                                     label="Invoice URL"

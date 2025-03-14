@@ -32,24 +32,28 @@ model Session {
 }
 
 model Item {
-  ID               String       @id
+  ID               Int       @id
   PurchaseItem     PurchaseItem @relation(fields: [PurchaseItemID], references: [ID])
   PurchaseItemID   Int
-  Shop             String
   ProductID        String
   ProductVariantID String
   ProductHandle    String
+  ProductTitle  String
+  ProductImage  String
+  ProductAlt    String
   SerialNumber     String
 }
 
 model PurchaseOrder {
   ID            Int            @id @default(autoincrement())
+  Description   String?
   InvoiceURL    String
   HasPaid   Boolean @default(false)
   DatePaid      DateTime?
   HasReceived   Boolean @default(false)
   DateReceived  DateTime?
   PurchaseItems PurchaseItem[]
+  PurchaseCosts PurchaseCost[]
 }
 
 model PurchaseItem {
@@ -59,4 +63,14 @@ model PurchaseItem {
   Title           String
   Cost            Float
   Items           Item[]
+}
+
+model PurchaseCost {
+    ID              Int           @id @default(autoincrement())
+    PurchaseOrder   PurchaseOrder @relation(fields: [PurchaseOrderID], references: [ID])
+    PurchaseOrderID Int
+    Description String
+    Type    String
+    Rate    Float
+    Cost    Float
 }

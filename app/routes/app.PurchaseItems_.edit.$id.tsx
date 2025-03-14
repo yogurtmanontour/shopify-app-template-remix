@@ -42,7 +42,7 @@ export async function action({ request, params } : ActionFunctionArgs){
     return redirect(`/app/purchaseorders/${data.PurchaseOrderID}`);
 }
 
-export default function EditPurchaseOrder(){
+export default function EditPurchaseItem(){
     const [searchParams, setSearchParams] = useSearchParams();
 
     const {PurchaseItemDTO} : any = useLoaderData()

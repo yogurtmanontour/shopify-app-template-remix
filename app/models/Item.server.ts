@@ -1,80 +1,140 @@
+import { GraphQLClient } from "node_modules/@shopify/shopify-app-remix/dist/ts/server/clients/types";
 import db from "../db.server";
+import { AdminApiContextWithoutRest } from "node_modules/@shopify/shopify-app-remix/dist/ts/server/clients";
 
+const LocationID = "99206562125"
 
 export interface ItemType {
-    ID : string 
-    Shop : string
+    ID : number 
+    PurchaseItemID: number
     ProductID : string
     ProductVariantID : string 
     ProductHandle : string
     SerialNumber : string
-    productDeleted: string
-    productTitle: string
-    productImage: string
-    productAlt: string
+    ProductTitle: string
+    ProductImage: string
+    ProductAlt: string
 }
 
-export async function GetItem (ID: string, graphql: any): Promise<ItemType | null> {
+export interface CreateItemType {
+    ID : number 
+    PurchaseItemID: number
+    ProductID : string
+    ProductVariantID : string 
+    ProductHandle : string
+    ProductTitle: string
+    ProductImage: string
+    ProductAlt: string
+    SerialNumber : string
+}
+
+export async function GetItem (ID: number, graphql: any): Promise<ItemType | null> {
     const Item = await db.item.findFirst({ where: { ID } });
   
     if (!Item) {
         return null;
     }
-    return SupplementItem(Item,graphql);
+    return Item
 }
 
-export async function GetManyItems(Shop: string, graphql: any): Promise<Array<ItemType>> {
-    const Items = await db.item.findMany({ where: { Shop }, orderBy: {ID : "desc"} });
+export async function GetManyItems( graphql: any): Promise<Array<ItemType>> {
+    const Items = await db.item.findMany({ orderBy: {ID : "desc"} });
   
     if (Items.length === 0) return [];
-    return Promise.all(
-        Items.map((Item) => SupplementItem(Item, graphql))
-    );
+    return Items
 }
-  
-async function SupplementItem(Item: any, graphql: any) {
-    const response = await graphql(
+
+export async function AddItem(Item: CreateItemType, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
+    let DBItem = await db.item.create({data: Item})
+    if (DBItem!=null) {
+        return AlterStockByVarientID(DBItem.ProductVariantID, 1, DBItem.PurchaseItemID, Admin)
+    }
+    return false
+}
+
+export async function DeleteItem(ItemID: number, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
+    let DBItem = await db.item.delete({ where: { ID: ItemID } });
+    if (DBItem!=null) {
+        return AlterStockByVarientID(DBItem.ProductVariantID, -1, DBItem.PurchaseItemID, Admin)
+    }
+    return false
+}
+
+async function AlterStockByVarientID(ProductVarientID : string, Delta: number, PurchaseItemID : number, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
+    const InventoryIDResponse = await Admin.graphql(
         `
-          query SupplementItem($id: ID!) {
-            product(id: $id) {
-              title
-              images(first: 1) {
-                nodes {
-                  altText
-                  url
+            query ProductVariantMetafield($VarientID: ID!) {
+                productVariant(id: $VarientID) {
+                    inventoryItem {
+                        id
+                    }
                 }
-              }
             }
-          }
         `,
         {
-          variables: {
-            id: Item.ProductID,
-          },
+            variables: {
+                VarientID: ProductVarientID,
+              },
         }
-      );
+    );
 
     const {
-        data: { product },
-    } = await response.json();
+        data: { productVariant },
+    } = await InventoryIDResponse.json();
 
-    return {
-        ...Item,
-        productDeleted: !product?.title,
-        productTitle: product?.title,
-        productImage: product?.images?.nodes[0]?.url,
-        productAlt: product?.images?.nodes[0]?.altText,
-    }
+    const UpdateInventoryResponse = await Admin.graphql(
+        `
+            mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
+                inventoryAdjustQuantities(input: $input) {
+                    userErrors {
+                        field
+                        message
+                    }
+                    inventoryAdjustmentGroup {
+                    createdAt
+                    reason
+                    referenceDocumentUri
+                    changes {
+                        name
+                        delta
+                    }
+                    }
+                }
+            }
+        `,
+        {
+            variables: {
+                input: {
+                  reason: "received",
+                  name: "available",
+                  referenceDocumentUri: `https://admin.shopify.com/store/stagewarehousetest/apps/serialapp-1/app/purchaseitems/${PurchaseItemID}`,
+                  changes: [
+                    {
+                      delta: Delta,
+                      inventoryItemId: productVariant.inventoryItem.id,
+                      locationId: `gid://shopify/Location/${LocationID}`
+                    }
+                  ]
+                }
+              }
+        }
+    );
+
+    const {
+        data: { inventoryAdjustQuantities },
+    } = await UpdateInventoryResponse.json();
+
+    return !(inventoryAdjustQuantities.userErrors.length > 0)
 }
 
-export function validateItem(data: any){
-    const errors: any = {};
+// export function validateItem(data: any){
+//     const errors: any = {};
 
-    if (!data.ProductID) {
-        errors.ProductID = "Product is required";
-    }
+//     if (!data.ProductID) {
+//         errors.ProductID = "Product is required";
+//     }
 
-    if (Object.keys(errors).length) {
-        return errors;
-    }
-}
+//     if (Object.keys(errors).length) {
+//         return errors;
+//     }
+// }

@@ -1,15 +1,18 @@
 import db from "../db.server";
 import { ActionFunctionArgs, LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit } from "@remix-run/react";
-import { Badge, BlockStack, Box, Button, Card, EmptyState, IndexTable, InlineGrid, Layout, Link, Page, PageActions, Text } from "@shopify/polaris";
-import { PlusIcon } from '@shopify/polaris-icons';
+import { Badge, BlockStack, Box, Button, Card, EmptyState, IndexTable, InlineGrid, Layout, Link, Page, PageActions, Text, Thumbnail } from "@shopify/polaris";
+import { ImageIcon, PlusIcon } from '@shopify/polaris-icons';
+import { ItemType, SupplementItem } from "app/models/Item.server";
 import { GetPurchaseItem, PurchaseItemType } from "app/models/PurchaseItem.server";
 import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
+import { authenticate } from "app/shopify.server";
 
 const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",currency:"GBP"})
 
 
 export async function loader({ request, params } : LoaderFunctionArgs){
+    const { admin } = await authenticate.admin(request);
     const PurchaseItemDTO : PurchaseItemType | null = await GetPurchaseItem(Number(params.id));
 
     return Response.json({
@@ -36,45 +39,66 @@ const TableEmptyState = (
     />
 )
 
-const PITableRow = (({PurchaseItem} : {PurchaseItem : PurchaseItemType})=>(
-    <IndexTable.Row position={PurchaseItem.ID} id={String(PurchaseItem.ID)} key={PurchaseItem.ID}>
+const PITableRow = (({Item, CostEach} : {Item : ItemType, CostEach : number})=>(
+    <IndexTable.Row position={Item.ID} id={String(Item.ID)} key={Item.ID}>
         <IndexTable.Cell>
-            <Text as="p">{PurchaseItem.ID}</Text>
+            <Link  dataPrimaryLink monochrome removeUnderline url={"/app/Items/"+Item.ID}>
+                <Text as={"p"} fontWeight="bold">{Item.ID}</Text>
+            </Link>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            <Text as="p" numeric>{CurrencyFormatter.format(PurchaseItem.Cost)}</Text>
+            <Thumbnail
+                source={Item.ProductImage || ImageIcon}
+                alt={Item.ProductTitle}
+                size="small"
+            />
         </IndexTable.Cell>
         <IndexTable.Cell>
-            <Text as="p">{PurchaseItem.Title}</Text>
+            <Text as={"p"}>{Item.ProductTitle}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            <Text numeric as={"p"}>{Item.SerialNumber}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            <Text numeric as={"p"}>{CurrencyFormatter.format(CostEach)}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            <Badge tone="critical">Unknown</Badge>
         </IndexTable.Cell>
     </IndexTable.Row>
 ))
 
-const PITable = (({PurchaseItems} : {PurchaseItems : PurchaseItemType[]})=>(
+const ItemTable = (({Items, CostEach} : {Items : ItemType[], CostEach : number})=>(
     <IndexTable
         emptyState={TableEmptyState}
-        itemCount={PurchaseItems.length}
+        itemCount={Items.length}
         headings={[
             {title:"ID"},
-            {title:"Cost"},
-            {title:"Title"}
+            {title:"Thumbnail", hidden: true },
+            {title:"Product"},
+            {title:"Serial Number"},
+            {title:"Est Cost"},
+            {title:"status"}
         ]}
         selectable={false}
     >
-        {PurchaseItems.map(Item=>(
-            <PITableRow PurchaseItem={Item}/>
+        {Items.map(Item=>( 
+            <PITableRow Item={Item} CostEach={CostEach}/>
         ))
         }
     </IndexTable>
 ))
 
 export default function ViewPurchaseItem(){
-    const {PurchaseItemDTO} : any = useLoaderData()
+    const {PurchaseItemDTO, Shop} : any = useLoaderData()
     const CurrentPurchaseItem : PurchaseItemType = {
         ID: PurchaseItemDTO.ID,
         Title: PurchaseItemDTO.Title,
         Cost: PurchaseItemDTO.Cost,
-        PurchaseOrderID: PurchaseItemDTO.PurchaseOrderID
+        PurchaseOrderID: PurchaseItemDTO.PurchaseOrderID,
+        Items: PurchaseItemDTO.Items,
+        FixedCosts: PurchaseItemDTO.FixedCosts,
+        RateCosts: PurchaseItemDTO.RateCosts
     }
 
     const submit = useSubmit();
@@ -84,6 +108,10 @@ export default function ViewPurchaseItem(){
         }
         submit(data, { method: "post" })
     }
+
+
+    const EstimatedTotalCost : number = CurrentPurchaseItem.Cost+CurrentPurchaseItem.FixedCosts+(CurrentPurchaseItem.Cost*(CurrentPurchaseItem.RateCosts/100))
+    const EstimatedTotalCostEach : number = EstimatedTotalCost/CurrentPurchaseItem.Items.length
 
     return(
         <Page
@@ -106,6 +134,10 @@ export default function ViewPurchaseItem(){
                                     <Text as="p" numeric>{CurrencyFormatter.format(CurrentPurchaseItem.Cost)}</Text>
                                 </BlockStack>
                                 <BlockStack>
+                                    <Text as="h3" variant="headingMd" >Estimated Total Cost:</Text>
+                                    <Text as="p" numeric>{CurrencyFormatter.format(EstimatedTotalCost)}</Text>
+                                </BlockStack>
+                                <BlockStack>
                                     <Text as="h3" variant="headingMd" >Purchase Order:</Text>
                                     <Link url={`/app/purchaseorders/${CurrentPurchaseItem.PurchaseOrderID}`}>
                                         <Text as="p">{CurrentPurchaseItem.PurchaseOrderID}</Text>
@@ -119,10 +151,10 @@ export default function ViewPurchaseItem(){
                     <Card>
                         <BlockStack gap="200">
                             <InlineGrid columns="1fr auto">
-                                <Text as="h2" variant="headingLg" >Purchase Items</Text>
-                                {/* <Button accessibilityLabel="Add variant" icon={PlusIcon} url={'/app/PurchaseItems/'+CurrentOrder.ID}>Add Item</Button> */}
+                                <Text as="h2" variant="headingLg" >Items</Text>
+                                <Button accessibilityLabel="Add variant" icon={PlusIcon} url={'/app/Items/edit/new?PurchaseItem='+CurrentPurchaseItem.ID}>Add Item</Button>
                             </InlineGrid>
-                            {/* <PITable PurchaseItems={CurrentOrder.PurchaseItems}/> */}
+                            <ItemTable Items={CurrentPurchaseItem.Items} CostEach={EstimatedTotalCostEach}/>
                         </BlockStack>
                     </Card>         
                 </Layout.Section>

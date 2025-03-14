@@ -3,6 +3,8 @@ import { useLoaderData } from "@remix-run/react";
 import { Badge, Card, EmptyState, IndexTable, Link, Page, Text } from "@shopify/polaris";
 import { GetPurchaseOrders, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 
+const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",currency:"GBP"})
+
 export async function loader({ request } : LoaderFunctionArgs){
     const PurchaseOrders : PurchaseOrderType[] = await GetPurchaseOrders();
 
@@ -24,7 +26,9 @@ const POTable = (({PurchaseOrders} : {PurchaseOrders : PurchaseOrderType[]})=>(
         itemCount={PurchaseOrders.length}
         headings={[
             {title:"ID"},
+            {title:"Description"},
             {title:"Cost"},
+            {title:"Est Subtotal"},
             {title:"Date Paid"},
             {title:"Date Received"},
         ]}
@@ -44,13 +48,19 @@ const POTableRow = (({PurchaseOrder} : {PurchaseOrder : PurchaseOrderType})=>(
             </Link>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            <Text as="p" numeric>{PurchaseOrder.TotalCost}</Text>
+            <Text as="p" numeric>{PurchaseOrder.Description}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            {PurchaseOrder.DatePaid != null ? <Text as="p">{PurchaseOrder.DatePaid.toLocaleDateString()}</Text> : <Badge tone="attention">Unpaid</Badge>}
+            <Text as="p" numeric>{CurrencyFormatter.format(PurchaseOrder.TotalCost)}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            {PurchaseOrder.DateReceived != null ? <Text as="p">{PurchaseOrder.DateReceived.toLocaleDateString()}</Text> : <Badge tone="attention">Expected</Badge>}
+            <Text as="p" numeric>{CurrencyFormatter.format(PurchaseOrder.TotalCost+PurchaseOrder.EstimatedCosts)}</Text>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            {PurchaseOrder.HasPaid ? <Text as="p">{PurchaseOrder.DatePaid.toLocaleDateString()}</Text> : <Badge tone="attention">Unpaid</Badge>}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+            {PurchaseOrder.HasReceived ? <Text as="p">{PurchaseOrder.DateReceived.toLocaleDateString()}</Text> : <Badge tone="attention">Expected</Badge>}
         </IndexTable.Cell>
     </IndexTable.Row>
 ))
@@ -60,13 +70,16 @@ export default function PurchaseOrders() {
     const Processed : PurchaseOrderType[] = PurchaseOrders.map((Value: any)=>{
         const Post : PurchaseOrderType = {
             ID: Value.ID,
+            Description: Value.Description,
             InvoiceURL: Value.InvoiceURL,
             DatePaid: new Date(Value.DatePaid),
             DateReceived: new Date(Value.DateReceived),
             PurchaseItems: [],
-            TotalCost: 0,
+            PurchaseCosts: [],
+            TotalCost: Value.TotalCost,
             HasPaid: Value.HasPaid,
-            HasReceived: Value.HasReceived
+            HasReceived: Value.HasReceived,
+            EstimatedCosts: Value.EstimatedCosts
         }
         return Post
     })

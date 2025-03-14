@@ -7,6 +7,9 @@ export interface PurchaseItemType {
     PurchaseOrderID : number;
     Title: string;
     Cost: number;
+    Items: ItemType[];
+    FixedCosts : number;
+    RateCosts : number;
 }
 
 export interface CreatePurchaseItemType {
@@ -18,13 +21,24 @@ export interface CreatePurchaseItemType {
 
 export async function GetPurchaseItem (ID: number): Promise<PurchaseItemType | null> {
 
-    let PurchaseItem = await db.purchaseItem.findFirst({ where: { ID } }).then(Value=>{
+    let PurchaseItem = await db.purchaseItem.findFirst({include:{Items:true, PurchaseOrder:{include:{PurchaseCosts: true, PurchaseItems:{select:{ID:true}}}}}, where: { ID } }).then(Value=>{
         if (Value!=null) {
+            let TotalFixedCosts : number = 0;
+            let TotalRateCosts : number = 0;
+            Value.PurchaseOrder.PurchaseCosts.forEach(Cost => {
+                TotalFixedCosts+=Cost.Cost;
+                TotalRateCosts+=Cost.Rate;
+            });
+            let EachFixedCosts : number = TotalFixedCosts/Value.PurchaseOrder.PurchaseItems.length
+
             let Output : PurchaseItemType = {
                 ID: Value.ID,
                 PurchaseOrderID: Value.PurchaseOrderID,
                 Title: Value.Title,
-                Cost: Value.Cost
+                Cost: Value.Cost,
+                Items: Value.Items,
+                FixedCosts: EachFixedCosts,
+                RateCosts: TotalRateCosts
             }
             return Output
         }
