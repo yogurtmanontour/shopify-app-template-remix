@@ -1,21 +1,21 @@
 import { Bleed, BlockStack, Box, Button, Card, ChoiceList, DatePicker, Divider, FormLayout, Icon, InlineError, InlineStack, Layout, Page, PageActions, Popover, Text, TextField, Thumbnail } from "@shopify/polaris";
 
 import db from "../db.server";
-import { redirect, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
-import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { redirect, useActionData, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
+import { ActionFunctionArgs, json, LoaderFunctionArgs } from "@remix-run/node";
 import { useCallback, useState } from "react";
 import { GetPurchaseOrder, GetPurchaseOrders, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 
 import CustomDatePicker from "app/Components/DatePicker";
 import { CreatePurchaseCostType, GetPurchaseCost, PurchaseCostType } from "app/models/PurchaseCost.server";
-import { AddItem, CreateItemType, GetItem, ItemType } from "app/models/Item.server";
+import { AddItem, CreateItemErrors, CreateItemType, GetItem, ItemType, validateItem } from "app/models/Item.server";
 import { authenticate } from "app/shopify.server";
 import { ImageIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request, params } : LoaderFunctionArgs){
-    const { admin } = await authenticate.admin(request);
+    const url = new URL(request.url);
     
-    let ItemDTO : ItemType | null = {
+    let ItemDTO : ItemType = {
         ID: 0,
         PurchaseItemID: 0,
         ProductID: "",
@@ -28,7 +28,14 @@ export async function loader({ request, params } : LoaderFunctionArgs){
     }
 
     if (params.id!="new") {
-        ItemDTO = await GetItem(Number(params.id),admin.graphql);
+        ItemDTO = await GetItem(Number(params.id)) || ItemDTO;
+    }
+
+    const CopyFrom = url.searchParams.get("CopyFrom")
+    if (CopyFrom) {
+        ItemDTO = await GetItem(Number(CopyFrom)) || ItemDTO
+        ItemDTO.ID = 0
+        ItemDTO.SerialNumber = ""
     }
 
     const PurchaseOrders = await GetPurchaseOrders();
@@ -55,7 +62,13 @@ export async function action({ request, params } : ActionFunctionArgs){
         SerialNumber: String(RequestData.get("SerialNumber"))
     };
 
-    const CurrentCost = params.id=="new" ? AddItem(data,admin): await db.item.update({ where: { ID: Number(params.id)}, data })
+    const ValidationErrors : CreateItemErrors | null = validateItem(data)
+    if (ValidationErrors) {
+        return Response.json({ ValidationErrors }, { status: 422 });
+    }
+
+
+    const CurrentItem = params.id=="new" ? await AddItem(data,admin): await db.item.update({ where: { ID: Number(params.id)}, data })
     
 
     return redirect(`/app/items/${data.ID}`);
@@ -63,6 +76,9 @@ export async function action({ request, params } : ActionFunctionArgs){
 
 export default function EditItem(){
     const [searchParams, setSearchParams] = useSearchParams();
+
+    //Errors returned from action
+    const ValidationErrors  : CreateItemErrors | null = useActionData<typeof action>()?.ValidationErrors
 
     const {ItemDTO} : any = useLoaderData()
     const CurrentItem : ItemType = {
@@ -120,7 +136,7 @@ export default function EditItem(){
         <Page
             
             title={CurrentItem.ID==0? "Create Item" : "Edit Item"}
-            backAction={{content: 'Purchase Order', url: `/app/purchaseorders/${CurrentItem.PurchaseItemID}`}}
+            backAction={{content: 'Purchase Order', url: CurrentItem.ID!=0 ? `/app/items/${CurrentItem.ID}` : `/app/purchaseitems/${CurrentItem.PurchaseItemID}`}}
         >
             <Layout>
                 <Layout.Section>
@@ -134,7 +150,9 @@ export default function EditItem(){
                                         id="ID"
                                         label="Unique ID"
                                         autoComplete="off"
+                                        autoFocus={true}
                                         value={String(FormState.ID)}
+                                        error={ValidationErrors?.ID}
                                         onChange={IDString=>{
                                             let ID = Number(IDString)
                                             SetFormState({...FormState,ID})
@@ -177,6 +195,12 @@ export default function EditItem(){
                                 </Button>
                             </BlockStack>
                             )}
+                            {ValidationErrors?.ProductID ? 
+                                <InlineError
+                                    message={ValidationErrors?.ProductID}
+                                    fieldID="ProductTitle"
+                                />
+                            : null}
                         </BlockStack>
                     </Card>
                 </Layout.Section>

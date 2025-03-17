@@ -3,16 +3,13 @@ import { ActionFunctionArgs, LoaderFunctionArgs, redirect } from "@remix-run/nod
 import { useLoaderData, useSubmit } from "@remix-run/react";
 import { Badge, BlockStack, Box, Button, Card, EmptyState, IndexTable, InlineGrid, Layout, Link, Page, PageActions, Text, Thumbnail } from "@shopify/polaris";
 import { ImageIcon, PlusIcon } from '@shopify/polaris-icons';
-import { ItemType, SupplementItem } from "app/models/Item.server";
+import { ItemType } from "app/models/Item.server";
 import { GetPurchaseItem, PurchaseItemType } from "app/models/PurchaseItem.server";
-import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 import { authenticate } from "app/shopify.server";
 
 const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",currency:"GBP"})
 
-
 export async function loader({ request, params } : LoaderFunctionArgs){
-    const { admin } = await authenticate.admin(request);
     const PurchaseItemDTO : PurchaseItemType | null = await GetPurchaseItem(Number(params.id));
 
     return Response.json({
@@ -31,13 +28,13 @@ export async function action({ request, params } : ActionFunctionArgs){
     return redirect(`/app/purchaseorders/${data.ReturnID}`);
 }
 
-const TableEmptyState = (
+const TableEmptyState = ((PurchaseItemID : number) => (
     <EmptyState
-        heading="Add some purchase items to get started"
+        heading="Add some Items to get started"
         image = "https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-        action={{content:"Add", url:"/app/PurchaseItems/"}}
+        action={{content:"Add", url: `/app/Items/edit/new?PurchaseItem=${PurchaseItemID}`}}
     />
-)
+))
 
 const PITableRow = (({Item, CostEach} : {Item : ItemType, CostEach : number})=>(
     <IndexTable.Row position={Item.ID} id={String(Item.ID)} key={Item.ID}>
@@ -68,9 +65,9 @@ const PITableRow = (({Item, CostEach} : {Item : ItemType, CostEach : number})=>(
     </IndexTable.Row>
 ))
 
-const ItemTable = (({Items, CostEach} : {Items : ItemType[], CostEach : number})=>(
+const ItemTable = (({Items, CostEach, PurchaseItemID} : {Items : ItemType[], CostEach : number, PurchaseItemID : number})=>(
     <IndexTable
-        emptyState={TableEmptyState}
+        emptyState={TableEmptyState(PurchaseItemID)}
         itemCount={Items.length}
         headings={[
             {title:"ID"},
@@ -90,7 +87,7 @@ const ItemTable = (({Items, CostEach} : {Items : ItemType[], CostEach : number})
 ))
 
 export default function ViewPurchaseItem(){
-    const {PurchaseItemDTO, Shop} : any = useLoaderData()
+    const {PurchaseItemDTO} : any = useLoaderData()
     const CurrentPurchaseItem : PurchaseItemType = {
         ID: PurchaseItemDTO.ID,
         Title: PurchaseItemDTO.Title,
@@ -154,7 +151,7 @@ export default function ViewPurchaseItem(){
                                 <Text as="h2" variant="headingLg" >Items</Text>
                                 <Button accessibilityLabel="Add variant" icon={PlusIcon} url={'/app/Items/edit/new?PurchaseItem='+CurrentPurchaseItem.ID}>Add Item</Button>
                             </InlineGrid>
-                            <ItemTable Items={CurrentPurchaseItem.Items} CostEach={EstimatedTotalCostEach}/>
+                            <ItemTable Items={CurrentPurchaseItem.Items} CostEach={EstimatedTotalCostEach} PurchaseItemID={CurrentPurchaseItem.ID}/>
                         </BlockStack>
                     </Card>         
                 </Layout.Section>

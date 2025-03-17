@@ -25,6 +25,11 @@ export interface CreatePurchaseOrderType {
     DateReceived: Date | null;
 }
 
+export interface CreatePurchaseOrderErrors {
+    Description : string;
+    InvoiceURL : string;
+}
+
 export async function GetPurchaseOrder (ID: number): Promise<PurchaseOrderType | null> {
 
     let PurchaseOrder = await db.purchaseOrder.findFirst({include:{PurchaseItems:true,PurchaseCosts:true}, where: { ID } }).then(Value=>{
@@ -95,4 +100,27 @@ export async function GetPurchaseOrders(): Promise<Array<PurchaseOrderType>> {
         return [];
     }
     return PurchaseOrders
+}
+
+export function ValidatePurchaseOrder(data: CreatePurchaseOrderType) : CreatePurchaseOrderErrors | null{
+    let HasError = false
+    const errors : CreatePurchaseOrderErrors = {
+        Description: "",
+        InvoiceURL: ""
+    };
+
+    if (!data.Description) {
+        errors.Description = "A description is required";
+        HasError = true
+    }
+
+    if (!data.InvoiceURL) {
+        errors.InvoiceURL = "An InvoiceURL is required";
+        HasError = true
+    }
+
+    if (HasError) {
+        return errors;
+    }
+    return null
 }

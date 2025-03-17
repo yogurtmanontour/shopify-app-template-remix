@@ -1,20 +1,23 @@
 import { BlockStack, Box, Card, DatePicker, FormLayout, Icon, Layout, Page, PageActions, Popover, Text, TextField } from "@shopify/polaris";
 
 import db from "../db.server";
-import { redirect, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
+import { redirect, useActionData, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useState } from "react";
 import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 
 import CustomDatePicker from "app/Components/DatePicker";
-import { CreatePurchaseItemType, GetPurchaseItem, PurchaseItemType } from "app/models/PurchaseItem.server";
+import { CreatePurchaseItemErrors, CreatePurchaseItemType, GetPurchaseItem, PurchaseItemType, ValidatePurchaseItem } from "app/models/PurchaseItem.server";
 
 export async function loader({ request, params } : LoaderFunctionArgs){
     let PurchaseItemDTO : PurchaseItemType | null = {
         ID: 0,
         PurchaseOrderID: 0,
         Title: "",
-        Cost: 0
+        Cost: 0,
+        Items: [],
+        FixedCosts: 0,
+        RateCosts: 0
     }
 
     if (params.id!="new") {
@@ -36,6 +39,11 @@ export async function action({ request, params } : ActionFunctionArgs){
         Cost: Number(RequestData.get("Cost"))
     };
 
+    const ValidationErrors : CreatePurchaseItemErrors | null = ValidatePurchaseItem(data)
+    if (ValidationErrors) {
+        return Response.json({ ValidationErrors }, { status: 422 });
+    }
+
     const CurrentItem = params.id=="new" ? await db.purchaseItem.create({data}) : await db.purchaseItem.update({ where: { ID: Number(params.id)}, data })
     
 
@@ -45,13 +53,19 @@ export async function action({ request, params } : ActionFunctionArgs){
 export default function EditPurchaseItem(){
     const [searchParams, setSearchParams] = useSearchParams();
 
+    //Errors returned from action
+    const ValidationErrors  : CreatePurchaseItemErrors | null = useActionData<typeof action>()?.ValidationErrors
+
     const {PurchaseItemDTO} : any = useLoaderData()
         const CurrentPurchaseItem : PurchaseItemType = {
             ID: PurchaseItemDTO.ID,
             Title: PurchaseItemDTO.Title,
             Cost: PurchaseItemDTO.Cost,
-            PurchaseOrderID: PurchaseItemDTO.PurchaseOrderID
-    }
+            PurchaseOrderID: PurchaseItemDTO.PurchaseOrderID,
+            Items: [],
+            FixedCosts: 0,
+            RateCosts: 0
+        }
     
     const [FormState,SetFormState] = useState(CurrentPurchaseItem)
 
@@ -82,6 +96,7 @@ export default function EditPurchaseItem(){
                                     id="Title"
                                     label="Title"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Title}
                                     value={FormState.Title}
                                     onChange={Title=>{
                                         SetFormState({...FormState,Title})
@@ -92,6 +107,7 @@ export default function EditPurchaseItem(){
                                     id="Cost"
                                     label="Cost"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Cost}
                                     value={String(FormState.Cost)}
                                     onChange={CostString=>{
                                         let Cost = Number(CostString)

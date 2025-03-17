@@ -17,6 +17,12 @@ export interface CreatePurchaseCostType {
     Cost: number;
 }
 
+export interface CreatePurchaseCostErrors {
+    Description: string;
+    Rate: string;
+    Cost: string;
+}
+
 
 export async function GetPurchaseCost (ID: number): Promise<PurchaseCostType | null> {
 
@@ -40,3 +46,33 @@ export async function GetPurchaseCost (ID: number): Promise<PurchaseCostType | n
     return PurchaseCost
 }
 
+export function ValidatePurchaseCost(data: CreatePurchaseCostType) : CreatePurchaseCostErrors | null{
+    let HasError = false
+    const errors : CreatePurchaseCostErrors = {
+        Description: "",
+        Rate: "",
+        Cost: ""
+    };
+
+    if (!data.Description) {
+        errors.Description = "A Description is required";
+        HasError = true  
+    }
+
+    if (data.Type=="Fixed") {
+        if (!data.Cost) {
+            errors.Cost = "A cost is required";
+            HasError = true
+        }
+    } else {
+        if (!data.Rate) {
+            errors.Rate = "A rate is required";
+            HasError = true
+        }
+    }
+
+    if (HasError) {
+        return errors;
+    }
+    return null
+}

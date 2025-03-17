@@ -13,8 +13,7 @@ const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",curren
 
 
 export async function loader({ request, params } : LoaderFunctionArgs){
-    const { admin } = await authenticate.admin(request);
-    const ItemDTO : ItemType | null = await GetItem(Number(params.id),admin.graphql);
+    const ItemDTO : ItemType | null = await GetItem(Number(params.id));
 
     return Response.json({
         ItemDTO
@@ -48,7 +47,7 @@ export default function ViewItem(){
     }
 
     const submit = useSubmit();
-    function DeletePurchaseCost(){
+    function DeleteItem(){
         const data : any = {
             ReturnID : CurrentItem.PurchaseItemID
         }
@@ -103,7 +102,7 @@ export default function ViewItem(){
                         primaryAction={
                             {
                                 content: "Edit",
-                                url:`/app/purchaseCosts/edit/${CurrentItem.ID}`,
+                                url:`/app/items/edit/${CurrentItem.ID}`,
                             }
                         }
                         secondaryActions={[
@@ -111,8 +110,12 @@ export default function ViewItem(){
                                 content:"Delete",
                                 destructive:true,
                                 onAction() {
-                                    DeletePurchaseCost();
+                                    DeleteItem();
                                 },
+                            },
+                            {
+                                content:"Duplicate",
+                                url:`/app/Items/edit/new?CopyFrom=${CurrentItem.ID}`,
                             }
                         ]}
                     />

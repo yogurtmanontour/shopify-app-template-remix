@@ -1,13 +1,13 @@
 import { BlockStack, Box, Card, ChoiceList, DatePicker, FormLayout, Icon, Layout, Page, PageActions, Popover, Text, TextField } from "@shopify/polaris";
 
 import db from "../db.server";
-import { redirect, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
+import { redirect, useActionData, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useCallback, useState } from "react";
 import { GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
 
 import CustomDatePicker from "app/Components/DatePicker";
-import { CreatePurchaseCostType, GetPurchaseCost, PurchaseCostType } from "app/models/PurchaseCost.server";
+import { CreatePurchaseCostErrors, CreatePurchaseCostType, GetPurchaseCost, PurchaseCostType, ValidatePurchaseCost } from "app/models/PurchaseCost.server";
 
 export async function loader({ request, params } : LoaderFunctionArgs){
     let PurchaseCostDTO : PurchaseCostType | null = {
@@ -40,6 +40,12 @@ export async function action({ request, params } : ActionFunctionArgs){
         Cost: Number(RequestData.get("Cost"))
     };
 
+    const ValidationErrors : CreatePurchaseCostErrors | null = ValidatePurchaseCost(data)
+    if (ValidationErrors) {
+        return Response.json({ ValidationErrors }, { status: 422 });
+    }
+   
+
     const CurrentCost = params.id=="new" ? await db.purchaseCost.create({data}) : await db.purchaseCost.update({ where: { ID: Number(params.id)}, data })
     
 
@@ -49,15 +55,18 @@ export async function action({ request, params } : ActionFunctionArgs){
 export default function EditPurchaseCost(){
     const [searchParams, setSearchParams] = useSearchParams();
 
+    //Errors returned from action
+    const ValidationErrors  : CreatePurchaseCostErrors | null = useActionData<typeof action>()?.ValidationErrors
+
     const {PurchaseCostDTO} : any = useLoaderData()
-        const CurrentPurchaseCost : PurchaseCostType = {
-            ID: PurchaseCostDTO.ID,
-            PurchaseOrderID: PurchaseCostDTO.PurchaseOrderID,
-            Description: PurchaseCostDTO.Description,
-            Type: PurchaseCostDTO.Type,
-            Rate: PurchaseCostDTO.Rate,
-            Cost: PurchaseCostDTO.Cost
-        }
+    const CurrentPurchaseCost : PurchaseCostType = {
+        ID: PurchaseCostDTO.ID,
+        PurchaseOrderID: PurchaseCostDTO.PurchaseOrderID,
+        Description: PurchaseCostDTO.Description,
+        Type: PurchaseCostDTO.Type,
+        Rate: PurchaseCostDTO.Rate,
+        Cost: PurchaseCostDTO.Cost
+    }
     
     const [FormState,SetFormState] = useState(CurrentPurchaseCost)
 
@@ -80,7 +89,7 @@ export default function EditPurchaseCost(){
         <Page
             
             title={CurrentPurchaseCost.ID==0? "Create Purchase Cost" : "Edit Purchase Cost"}
-            backAction={{content: 'Purchase Order', url: `/app/purchaseorders/${CurrentPurchaseCost.PurchaseOrderID}`}}
+            backAction={{content: 'Purchase Order', url: `/app/purchaseorders/${searchParams.get("PurchaseOrder") || FormState.PurchaseOrderID}`}}
         >
             <Layout>
                 <Layout.Section>
@@ -93,6 +102,7 @@ export default function EditPurchaseCost(){
                                     id="Description"
                                     label="Description"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Description}
                                     value={FormState.Description}
                                     onChange={Description=>{
                                         SetFormState({...FormState,Description})
@@ -112,6 +122,7 @@ export default function EditPurchaseCost(){
                                     id="Cost"
                                     label="Cost"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Cost}
                                     value={String(FormState.Cost)}
                                     onChange={CostString=>{
                                         let Cost = Number(CostString)
@@ -124,6 +135,7 @@ export default function EditPurchaseCost(){
                                     id="Rate"
                                     label="Rate"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Rate}
                                     value={String(FormState.Rate)}
                                     onChange={RateString=>{
                                         let Rate = Number(RateString)

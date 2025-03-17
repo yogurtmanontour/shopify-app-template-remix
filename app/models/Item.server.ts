@@ -28,7 +28,12 @@ export interface CreateItemType {
     SerialNumber : string
 }
 
-export async function GetItem (ID: number, graphql: any): Promise<ItemType | null> {
+export interface CreateItemErrors {
+    ID : string,
+    ProductID : string
+}
+
+export async function GetItem (ID: number): Promise<ItemType | null> {
     const Item = await db.item.findFirst({ where: { ID } });
   
     if (!Item) {
@@ -37,19 +42,19 @@ export async function GetItem (ID: number, graphql: any): Promise<ItemType | nul
     return Item
 }
 
-export async function GetManyItems( graphql: any): Promise<Array<ItemType>> {
+export async function GetManyItems(): Promise<Array<ItemType>> {
     const Items = await db.item.findMany({ orderBy: {ID : "desc"} });
   
     if (Items.length === 0) return [];
     return Items
 }
 
-export async function AddItem(Item: CreateItemType, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
+export async function AddItem(Item: CreateItemType, Admin : AdminApiContextWithoutRest) : Promise<ItemType | null> {
     let DBItem = await db.item.create({data: Item})
     if (DBItem!=null) {
-        return AlterStockByVarientID(DBItem.ProductVariantID, 1, DBItem.PurchaseItemID, Admin)
+        return await AlterStockByVarientID(DBItem.ProductVariantID, 1, DBItem.PurchaseItemID, Admin) ? DBItem : null
     }
-    return false
+    return null
 }
 
 export async function DeleteItem(ItemID: number, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
@@ -127,14 +132,25 @@ async function AlterStockByVarientID(ProductVarientID : string, Delta: number, P
     return !(inventoryAdjustQuantities.userErrors.length > 0)
 }
 
-// export function validateItem(data: any){
-//     const errors: any = {};
+export function validateItem(data: CreateItemType) : CreateItemErrors | null{
+    let HasError = false
+    const errors : CreateItemErrors = {
+        ID: "",
+        ProductID: ""
+    };
 
-//     if (!data.ProductID) {
-//         errors.ProductID = "Product is required";
-//     }
+    if (!data.ID) {
+        errors.ID = "An ID is required";
+        HasError = true
+    }
 
-//     if (Object.keys(errors).length) {
-//         return errors;
-//     }
-// }
+    if (!data.ProductID) {
+        errors.ProductID = "A product is required";
+        HasError = true
+    }
+
+    if (HasError) {
+        return errors;
+    }
+    return null
+}

@@ -18,6 +18,11 @@ export interface CreatePurchaseItemType {
     Cost: number;
 }
 
+export interface CreatePurchaseItemErrors {
+    Title: string;
+    Cost: string;
+}
+
 
 export async function GetPurchaseItem (ID: number): Promise<PurchaseItemType | null> {
 
@@ -50,3 +55,25 @@ export async function GetPurchaseItem (ID: number): Promise<PurchaseItemType | n
     return PurchaseItem
 }
 
+export function ValidatePurchaseItem(data: CreatePurchaseItemType) : CreatePurchaseItemErrors | null{
+    let HasError = false
+    const errors : CreatePurchaseItemErrors = {
+        Title: "",
+        Cost: ""
+    };
+
+    if (!data.Title) {
+        errors.Title = "A title is required";
+        HasError = true
+    }
+
+    if (!data.Cost) {
+        errors.Cost = "The cost is required";
+        HasError = true
+    }
+
+    if (HasError) {
+        return errors;
+    }
+    return null
+}

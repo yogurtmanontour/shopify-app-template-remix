@@ -1,10 +1,10 @@
 import { BlockStack, Box, Card, DatePicker, FormLayout, Icon, Layout, Page, PageActions, Popover, Text, TextField } from "@shopify/polaris";
 
 import db from "../db.server";
-import { redirect, useLoaderData, useSubmit } from "@remix-run/react";
+import { redirect, useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useState } from "react";
-import { CreatePurchaseOrderType, GetPurchaseOrder, PurchaseOrderType } from "app/models/PurchaseOrder.server";
+import { CreatePurchaseOrderErrors, CreatePurchaseOrderType, GetPurchaseOrder, PurchaseOrderType, ValidatePurchaseOrder } from "app/models/PurchaseOrder.server";
 
 import CustomDatePicker from "app/Components/DatePicker";
 
@@ -45,6 +45,12 @@ export async function action({ request, params } : ActionFunctionArgs){
         DateReceived: new Date(String(RequestData.get("DateReceived")))
     }
 
+    const ValidationErrors : CreatePurchaseOrderErrors | null = ValidatePurchaseOrder(data)
+    if (ValidationErrors) {
+        console.log(ValidationErrors)
+        return Response.json({ ValidationErrors }, { status: 422 });
+    }
+
     const CurrentItem = params.id=="new" ? await db.purchaseOrder.create({data}) : await db.purchaseOrder.update({ where: { ID: Number(params.id)}, data })
     
 
@@ -53,6 +59,11 @@ export async function action({ request, params } : ActionFunctionArgs){
 
 export default function EditPurchaseOrder(){
     const {PurchaseOrderDTO} : any = useLoaderData()
+
+    //Errors returned from action
+    const ValidationErrors  : CreatePurchaseOrderErrors | null = useActionData<typeof action>()?.ValidationErrors
+
+
     const CurrentOrder : PurchaseOrderType = {
         ID: PurchaseOrderDTO.ID,
         Description: PurchaseOrderDTO.Description,
@@ -108,6 +119,7 @@ export default function EditPurchaseOrder(){
                                     id="Description"
                                     label="Description"
                                     autoComplete="off"
+                                    error={ValidationErrors?.Description}
                                     value={FormState.Description}
                                     onChange={Description=>{
                                         SetFormState({...FormState,Description})
@@ -117,6 +129,7 @@ export default function EditPurchaseOrder(){
                                     id="InvoiceURL"
                                     label="Invoice URL"
                                     autoComplete="off"
+                                    error={ValidationErrors?.InvoiceURL}
                                     value={FormState.InvoiceURL}
                                     onChange={InvoiceURL=>{
                                         SetFormState({...FormState,InvoiceURL})
