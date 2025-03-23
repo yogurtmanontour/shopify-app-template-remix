@@ -60,7 +60,7 @@ const PITableRow = (({Item, CostEach} : {Item : ItemType, CostEach : number})=>(
             <Text numeric as={"p"}>{CurrencyFormatter.format(CostEach)}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
-            <Badge tone="critical">Unknown</Badge>
+            <Badge progress={Item.Status == "Available" ? "incomplete" : "complete"} tone={Item.Status == "Available" ? "attention" : "success"}>{Item.Status}</Badge>
         </IndexTable.Cell>
     </IndexTable.Row>
 ))
@@ -75,7 +75,7 @@ const ItemTable = (({Items, CostEach, PurchaseItemID} : {Items : ItemType[], Cos
             {title:"Product"},
             {title:"Serial Number"},
             {title:"Est Cost"},
-            {title:"status"}
+            {title:"Status"}
         ]}
         selectable={false}
     >

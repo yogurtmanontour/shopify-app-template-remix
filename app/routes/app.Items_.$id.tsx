@@ -1,3 +1,4 @@
+import { ItemStatus } from "@prisma/client";
 import db from "../db.server";
 import { ActionFunctionArgs, LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit } from "@remix-run/react";
@@ -43,7 +44,8 @@ export default function ViewItem(){
         SerialNumber: ItemDTO.SerialNumber,
         ProductTitle: ItemDTO.ProductTitle,
         ProductImage: ItemDTO.ProductImage,
-        ProductAlt: ItemDTO.ProductAlt
+        ProductAlt: ItemDTO.ProductAlt,
+        Status: ItemDTO.Status
     }
 
     const submit = useSubmit();
@@ -75,6 +77,12 @@ export default function ViewItem(){
                                     <Text as="p" numeric>{CurrentItem.SerialNumber}</Text>
                                 </BlockStack>
                                 <BlockStack>
+                                    <Text as="h3" variant="headingMd" >Status:</Text>
+                                    <Box>
+                                        <Badge progress={CurrentItem.Status == "Available" ? "incomplete" : "complete"} tone={CurrentItem.Status == "Available" ? "attention" : "success"}>{CurrentItem.Status}</Badge>
+                                    </Box>
+                                </BlockStack>
+                                <BlockStack>
                                 <Text as="h3" variant="headingMd" >Purchase Item:</Text>
                                     <Link url={`/app/purchaseitems/${CurrentItem.PurchaseItemID}`}>
                                         <Text as="p">{CurrentItem.PurchaseItemID}</Text>
@@ -101,12 +109,14 @@ export default function ViewItem(){
                     <PageActions
                         primaryAction={
                             {
+                                disabled: CurrentItem.Status != "Available",
                                 content: "Edit",
                                 url:`/app/items/edit/${CurrentItem.ID}`,
                             }
                         }
                         secondaryActions={[
                             {
+                                disabled: CurrentItem.Status != "Available",
                                 content:"Delete",
                                 destructive:true,
                                 onAction() {

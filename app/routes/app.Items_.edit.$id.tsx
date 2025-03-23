@@ -24,7 +24,8 @@ export async function loader({ request, params } : LoaderFunctionArgs){
         SerialNumber: "",
         ProductTitle: "",
         ProductImage: "",
-        ProductAlt: ""
+        ProductAlt: "",
+        Status: "Available"
     }
 
     if (params.id!="new") {
@@ -90,7 +91,8 @@ export default function EditItem(){
         SerialNumber: ItemDTO.SerialNumber,
         ProductTitle: ItemDTO.ProductTitle,
         ProductImage: ItemDTO.ProductImage,
-        ProductAlt: ItemDTO.ProductAlt
+        ProductAlt: ItemDTO.ProductAlt,
+        Status: ItemDTO.Status
     }
     
     const [FormState,SetFormState] = useState(CurrentItem)

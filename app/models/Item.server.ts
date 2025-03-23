@@ -1,6 +1,9 @@
 import { GraphQLClient } from "node_modules/@shopify/shopify-app-remix/dist/ts/server/clients/types";
 import db from "../db.server";
 import { AdminApiContextWithoutRest } from "node_modules/@shopify/shopify-app-remix/dist/ts/server/clients";
+import { ItemStatus } from "@prisma/client";
+import { FulfillmentOrder } from "./FulfillmentOrder.server";
+import { FulfillmentRecordType } from "./FulfillmentRecord.server";
 
 const LocationID = "99206562125"
 
@@ -14,6 +17,7 @@ export interface ItemType {
     ProductTitle: string
     ProductImage: string
     ProductAlt: string
+    Status: ItemStatus
 }
 
 export interface CreateItemType {
@@ -63,6 +67,33 @@ export async function DeleteItem(ItemID: number, Admin : AdminApiContextWithoutR
         return AlterStockByVarientID(DBItem.ProductVariantID, -1, DBItem.PurchaseItemID, Admin)
     }
     return false
+}
+
+export async function CheckAndFulfillItem(FulfillmentOrder : FulfillmentOrder, FulfillmentRecord : FulfillmentRecordType, Item : ItemType) : Promise<Response> {
+    //Does current item product variant match one in the fulfillment order
+    const LineItemToFulfill = FulfillmentOrder.LineItems.find(x=>x.ProductVarientID==Item.ProductVariantID)
+    if (LineItemToFulfill) {
+        //Do more of the product varient need fulfilling
+        if (LineItemToFulfill.Quantity>FulfillmentRecord.Items.filter(x=>x.ProductVariantID==Item.ProductVariantID).length) {
+            const FulfilledItem = await FulfillItem(Item.ID,FulfillmentRecord.ID)
+            if (FulfilledItem) {
+                return Response.json({}, { status: 200 });
+            }
+            return Response.json({Error : "Could not fulfill item"}, { status: 500 });
+        } else {
+            return Response.json({Error : "Item product variant fully fulfilled"}, { status: 400 });
+        }
+    } else {
+        return Response.json({Error : "Item product variant not in order"}, { status: 400 });
+    }
+}
+
+export async function FulfillItem(ItemID : number, FulfillmentRecordID : number) : Promise<ItemType | null> {
+    let DBItem = await db.item.update({where: { ID: Number(ItemID)},data: {FulfillmentRecordID : FulfillmentRecordID, Status : "Sold"}})
+    if (DBItem!=null) {
+        return DBItem
+    }
+    return null
 }
 
 async function AlterStockByVarientID(ProductVarientID : string, Delta: number, PurchaseItemID : number, Admin : AdminApiContextWithoutRest) : Promise<boolean> {

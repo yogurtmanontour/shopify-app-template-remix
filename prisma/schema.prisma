@@ -35,6 +35,8 @@ model Item {
   ID               Int       @id
   PurchaseItem     PurchaseItem @relation(fields: [PurchaseItemID], references: [ID])
   PurchaseItemID   Int
+  FulfillmentRecordID   Int?
+  FulfillmentRecord     FulfillmentRecord? @relation(fields: [FulfillmentRecordID], references: [ID])
   ProductID        String
   ProductVariantID String
   ProductHandle    String
@@ -42,6 +44,12 @@ model Item {
   ProductImage  String
   ProductAlt    String
   SerialNumber     String
+  Status ItemStatus @default(Available)
+}
+
+enum ItemStatus {
+    Available
+    Sold
 }
 
 model PurchaseOrder {
@@ -73,4 +81,10 @@ model PurchaseCost {
     Type    String
     Rate    Float
     Cost    Float
+}
+
+model FulfillmentRecord {
+    ID              Int           @id @default(autoincrement())
+    Items           Item[]
+    FulfillmentOrderID String
 }
