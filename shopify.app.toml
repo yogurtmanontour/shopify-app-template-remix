@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "100b8d00a664bdba631801cbeef1a13d"
-application_url = "https://src-gazette-after-agrees.trycloudflare.com"
+application_url = "https://shopify-app-template-remix-aged-dust-7151.fly.dev"
 embedded = true
 name = "serialapp"
 handle = "serialapp-1"
@@ -23,13 +23,13 @@ api_version = "2025-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,write_inventory,read_assigned_fulfillment_orders,read_merchant_managed_fulfillment_orders,read_third_party_fulfillment_orders,read_marketplace_fulfillment_orders"
+scopes = "write_products,write_inventory,read_assigned_fulfillment_orders,read_merchant_managed_fulfillment_orders,read_third_party_fulfillment_orders"
 
 [auth]
 redirect_urls = [
-  "https://src-gazette-after-agrees.trycloudflare.com/auth/callback",
-  "https://src-gazette-after-agrees.trycloudflare.com/auth/shopify/callback",
-  "https://src-gazette-after-agrees.trycloudflare.com/api/auth/callback"
+  "https://shopify-app-template-remix-aged-dust-7151.fly.dev/auth/callback",
+  "https://shopify-app-template-remix-aged-dust-7151.fly.dev/auth/shopify/callback",
+  "https://shopify-app-template-remix-aged-dust-7151.fly.dev/api/auth/callback"
 ]
 
 [pos]
