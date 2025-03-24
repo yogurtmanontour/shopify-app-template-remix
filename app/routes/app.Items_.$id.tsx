@@ -12,7 +12,6 @@ import { authenticate } from "app/shopify.server";
 
 const CurrencyFormatter = new Intl.NumberFormat('en-GB',{style:"currency",currency:"GBP"})
 
-
 export async function loader({ request, params } : LoaderFunctionArgs){
     const ItemDTO : ItemType | null = await GetItem(Number(params.id));
 

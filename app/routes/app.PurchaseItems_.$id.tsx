@@ -39,7 +39,7 @@ const TableEmptyState = ((PurchaseItemID : number) => (
 const PITableRow = (({Item, CostEach} : {Item : ItemType, CostEach : number})=>(
     <IndexTable.Row position={Item.ID} id={String(Item.ID)} key={Item.ID}>
         <IndexTable.Cell>
-            <Link  dataPrimaryLink monochrome removeUnderline url={"/app/Items/"+Item.ID}>
+            <Link dataPrimaryLink monochrome removeUnderline url={"/app/Items/"+Item.ID}>
                 <Text as={"p"} fontWeight="bold">{Item.ID}</Text>
             </Link>
         </IndexTable.Cell>

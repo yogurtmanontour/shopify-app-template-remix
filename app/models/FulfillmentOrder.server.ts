@@ -72,6 +72,57 @@ export async function GetOrder(ID : number, Admin : AdminApiContextWithoutRest) 
     return null
 }
 
-export async function GetOrders(ID : number){
+export async function GetOrders(Admin : AdminApiContextWithoutRest) : Promise<FulfillmentOrder[] | null>{
+    const FulfillmentOrderResponse = await Admin.graphql(
+        `
+            query AssignedFulfillmentOrders{
+                fulfillmentOrders (first: 50){
+                    nodes {
+                        id
+                        createdAt
+                        lineItems (first:250){
+                            nodes {
+                                id
+                                totalQuantity
+                            }
+                        }
+                    }
+                    pageInfo {
+                        startCursor
+                        endCursor
+                        hasNextPage
+                        hasPreviousPage
+                    }
+                }
+            }
+        `
+    );
 
+    const {
+        data: { fulfillmentOrders },
+    } = await FulfillmentOrderResponse.json();
+
+    if (fulfillmentOrders!=null) {
+        let ProcessedFulfillmentOrders : FulfillmentOrder[] = []
+        console.log(JSON.stringify(fulfillmentOrders))
+        fulfillmentOrders.nodes.forEach((fulfillmentOrder: { id: any; createdAt: any; lineItems: { nodes: any[] } }) => {
+            let TempFulfillmentOrder : FulfillmentOrder = {
+                ID : fulfillmentOrder.id,
+                CreatedDate : fulfillmentOrder.createdAt,
+                LineItems : fulfillmentOrder.lineItems.nodes.map((item: any)=>{
+                const NewItem : FulfillmentOrderLineItem = {
+                    ID: item.id,
+                    Quantity: item.totalQuantity,
+                    ProductTitle: "",
+                    ProductImage: "",
+                    ProductVarientID: ""
+                }
+                return NewItem
+            })
+            }
+            ProcessedFulfillmentOrders.push(TempFulfillmentOrder)
+        });
+        return ProcessedFulfillmentOrders
+    }
+    return null
 }

@@ -1,0 +1,38 @@
+# fly.toml app configuration file generated for shopify-app-template-remix-aged-dust-7151 on 2025-03-23T17:10:01Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'shopify-app-template-remix-aged-dust-7151'
+primary_region = 'lhr'
+
+[build]
+
+[env]
+  PORT = '3000'
+  SCOPES = 'read_assigned_fulfillment_orders,read_merchant_managed_fulfillment_orders,write_inventory,write_products'
+  SHOPIFY_API_KEY = '100b8d00a664bdba631801cbeef1a13d'
+  SHOPIFY_APP_URL = 'https://shopify-app-template-remix-aged-dust-7151.fly.dev'
+
+[processes]
+  app = 'node ./dbsetup.js npm run docker-start'
+
+[[mounts]]
+  source = 'data'
+  destination = '/data'
+  auto_extend_size_threshold = 80
+  auto_extend_size_increment = '1GB'
+  auto_extend_size_limit = '10GB'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

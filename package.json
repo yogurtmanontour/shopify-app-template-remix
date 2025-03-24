@@ -23,6 +23,7 @@
     "node": "^18.20 || ^20.10 || >=21.0.0"
   },
   "dependencies": {
+    "@flydotio/litestream": "^1.0.1",
     "@prisma/client": "^6.2.1",
     "@remix-run/dev": "^2.15.0",
     "@remix-run/fs-routes": "^2.15.0",
@@ -42,6 +43,7 @@
     "vite-tsconfig-paths": "^5.0.1"
   },
   "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.8",
     "@remix-run/eslint-config": "^2.15.0",
     "@remix-run/route-config": "^2.15.0",
     "@shopify/api-codegen-preset": "^1.1.1",
@@ -68,5 +70,8 @@
   },
   "overrides": {
     "@graphql-tools/url-loader": "8.0.16"
+  },
+  "dockerfile": {
+    "litestream": true
   }
 }

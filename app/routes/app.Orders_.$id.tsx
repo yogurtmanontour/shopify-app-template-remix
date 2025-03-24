@@ -2,12 +2,11 @@ import { FulfillmentRecord } from "@prisma/client";
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import { BlockStack, Box, Button, Card, FormLayout, IndexTable, Layout, Page, Text, TextField, Thumbnail } from "@shopify/polaris"
-import { ImageIcon, PlusIcon } from "@shopify/polaris-icons";
+import { ImageIcon, PlusIcon, UndoIcon } from "@shopify/polaris-icons";
 import { FulfillmentOrder, FulfillmentOrderLineItem, GetOrder } from "app/models/FulfillmentOrder.server";
 import { CreateFulfillmentRecord, FulfillmentRecordType, GetFullfilmentRecordByFullfilmentOrder } from "app/models/FulfillmentRecord.server";
-import { CheckAndFulfillItem, FulfillItem, GetItem, ItemType } from "app/models/Item.server";
+import { CheckAndFulfillItem, FulfillItem, GetItem, ItemType, UndoFulfillment } from "app/models/Item.server";
 import { authenticate } from "app/shopify.server";
-import { c } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
 import { useState } from "react";
 
 export async function loader({ request, params } : LoaderFunctionArgs){
@@ -26,6 +25,16 @@ export async function action({ request, params } : ActionFunctionArgs){
     const data : any = {
         ...Object.fromEntries(await request.formData())
     };
+
+    //Was the action to undo a fulfillment
+    if (request.method=="PATCH") {
+        const {ItemID} : {ItemID : Number} = data
+        const ItemResponse = UndoFulfillment(ItemID)
+        if (ItemResponse!=null) {
+            return Response.json({}, { status: 200 });        
+        }
+        return Response.json({Error : "Could not undo fulfillment"}, { status: 500 });
+    }
 
     const {Barcode, FulfillmentOrderID} : {Barcode : string, FulfillmentOrderID : string} = data
 
@@ -102,7 +111,7 @@ const LineItemTable = (({LineItems, FulfillmentRecord} : {LineItems : Fulfillmen
     </IndexTable>
 ))
 
-const FulfillmentRecordRow = (({Item}:{Item : ItemType})=>(
+const FulfillmentRecordRow = (({Item, UndoAction}:{Item : ItemType, UndoAction : Function})=>(
         <IndexTable.Row id={String(Item.ID)} position={Item.ID}>
             <IndexTable.Cell>
                 <Thumbnail
@@ -117,20 +126,24 @@ const FulfillmentRecordRow = (({Item}:{Item : ItemType})=>(
             <IndexTable.Cell>
                 <Text numeric as={"p"}>{Item.ID}</Text>
             </IndexTable.Cell>
+            <IndexTable.Cell>
+                <Button icon={UndoIcon} accessibilityLabel="Undo fulfillment" onClick={()=>UndoAction(Item.ID)}/>
+            </IndexTable.Cell>
         </IndexTable.Row>
 ))
 
-const FulfillmentRecordTable = (({FulfillmentRecord} : { FulfillmentRecord : FulfillmentRecordType})=>(
+const FulfillmentRecordTable = (({FulfillmentRecord, UndoAction} : { FulfillmentRecord : FulfillmentRecordType, UndoAction : Function})=>(
     <IndexTable headings={[
         {title:"Thumbnail", hidden: true },
         {title:"Product"},
-        {title:"ID"}
+        {title:"ID"},
+        {title:"Undo", hidden: true}
     ]} 
     itemCount={FulfillmentRecord.Items.length}
     selectable={false}>
         {
             FulfillmentRecord.Items.map(Item=>(
-                <FulfillmentRecordRow Item={Item}/>
+                <FulfillmentRecordRow Item={Item} UndoAction={UndoAction}/>
             ))
         }
     </IndexTable>
@@ -143,24 +156,25 @@ export default function ViewOrder() {
     const {FulfillmentRecord} : {FulfillmentRecord : FulfillmentRecordType} = useLoaderData()
 
     const [BarcodeState,SetBarcodeState] = useState("")
-    const [Processing,SetProcessing] = useState(false)
 
     //returned from action
     const Error  : string | null = useActionData<typeof action>()?.Error
-    if (Error) {
-        if (Processing) {
-            SetProcessing(false)
-        }
-    }
 
     const submit = useSubmit();
+
     function SaveData(){
-        SetProcessing(true)
         const data : any = {
             Barcode: BarcodeState,
             FulfillmentOrderID : CurrentFulfillmentOrder.ID
         }
         submit(data, { method: "post" })
+    }
+
+    function UndoFulfillment(ItemID : Number){
+        const data : any = {
+            ItemID: ItemID
+        }
+        submit(data, { method: "patch" })
     }
 
     return (
@@ -201,7 +215,7 @@ export default function ViewOrder() {
                     <Card>
                         <BlockStack gap="200">
                             <Text as="h2" variant="headingLg" >Fulfillment Record</Text>
-                            <FulfillmentRecordTable FulfillmentRecord={FulfillmentRecord}/>
+                            <FulfillmentRecordTable FulfillmentRecord={FulfillmentRecord} UndoAction={UndoFulfillment}/>
                         </BlockStack>
                     </Card>
                 </Layout.Section>
@@ -218,14 +232,11 @@ export default function ViewOrder() {
                                     value={BarcodeState}
                                     error={Error||undefined}
                                     onChange={Barcode=>{
-                                        if (!Processing) {
-                                            SetBarcodeState(Barcode)
-                                        }
+                                        SetBarcodeState(Barcode)
                                     }}
                                 />
                                 <Button
                                     icon={PlusIcon}
-                                    loading={Processing}
                                     onClick={SaveData}
                                 >Add</Button>
                             </BlockStack>

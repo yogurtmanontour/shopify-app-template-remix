@@ -37,6 +37,26 @@ export interface CreateItemErrors {
     ProductID : string
 }
 
+export interface ItemOverviewItem {
+    ID : number
+    ProductVariantID : string 
+    ProductHandle : string
+    ProductTitle: string
+    ProductImage: string 
+    ProductAlt: string
+    SerialNumber : string
+    Status : string
+    EstimatedCost: number
+}
+
+export interface ItemOverview {
+    TotalQuantity : number
+    TotalQuantitySold: number
+    TotalValue: number
+    TotalValueSold: number
+    Items : ItemOverviewItem[]
+}
+
 export async function GetItem (ID: number): Promise<ItemType | null> {
     const Item = await db.item.findFirst({ where: { ID } });
   
@@ -47,10 +67,58 @@ export async function GetItem (ID: number): Promise<ItemType | null> {
 }
 
 export async function GetManyItems(): Promise<Array<ItemType>> {
-    const Items = await db.item.findMany({ orderBy: {ID : "desc"} });
+    const Items = await db.item.findMany({ orderBy: {ID : "desc"}});
   
     if (Items.length === 0) return [];
     return Items
+}
+
+export async function GetItemOverview() : Promise<ItemOverview>{
+    let ItemOutput : ItemOverviewItem[] = []
+    let TotalValue : number = 0
+    let TotalValueSold : number = 0
+    const AllItems = await db.item.count()
+    const SoldItems = await db.item.count({where:{Status : "Sold"}})
+    const Items = await db.item.findMany({include:{PurchaseItem : {include: { _count : {select : {Items : true}}, PurchaseOrder : {select : {PurchaseCosts : true}}}}}})
+
+    Items.forEach(ItemInput => {
+        let TotalFixedCosts : number = 0;
+        let TotalRateCosts : number = 0;
+        ItemInput.PurchaseItem.PurchaseOrder.PurchaseCosts.forEach(Cost => {
+            TotalFixedCosts+=Cost.Cost;
+            TotalRateCosts+=Cost.Rate;
+        });
+        let EachCost : number = (TotalFixedCosts+ItemInput.PurchaseItem.Cost+(ItemInput.PurchaseItem.Cost*(TotalRateCosts/100)))/ItemInput.PurchaseItem._count.Items
+
+        TotalValue+=EachCost
+        if (ItemInput.Status=="Sold") {
+            TotalValueSold+=EachCost
+        }
+
+        const Item : ItemOverviewItem = {
+            ID: ItemInput.ID,
+            ProductVariantID: ItemInput.ProductVariantID,
+            ProductHandle: ItemInput.ProductHandle,
+            ProductImage: ItemInput.ProductImage,
+            ProductAlt: ItemInput.ProductAlt,
+            SerialNumber: ItemInput.SerialNumber,
+            EstimatedCost: EachCost,
+            ProductTitle: ItemInput.ProductTitle,
+            Status: ItemInput.Status
+        }
+
+        ItemOutput.push(Item)
+    });
+
+    const OverviewOutput : ItemOverview = {
+        TotalQuantity: AllItems,
+        TotalQuantitySold: SoldItems,
+        TotalValue: TotalValue,
+        TotalValueSold: TotalValueSold,
+        Items: ItemOutput
+    }
+
+    return OverviewOutput
 }
 
 export async function AddItem(Item: CreateItemType, Admin : AdminApiContextWithoutRest) : Promise<ItemType | null> {
@@ -90,6 +158,14 @@ export async function CheckAndFulfillItem(FulfillmentOrder : FulfillmentOrder, F
 
 export async function FulfillItem(ItemID : number, FulfillmentRecordID : number) : Promise<ItemType | null> {
     let DBItem = await db.item.update({where: { ID: Number(ItemID)},data: {FulfillmentRecordID : FulfillmentRecordID, Status : "Sold"}})
+    if (DBItem!=null) {
+        return DBItem
+    }
+    return null
+}
+
+export async function UndoFulfillment(ItemID : Number) : Promise<ItemType | null> {
+    let DBItem = await db.item.update({where: { ID: Number(ItemID)},data: {FulfillmentRecordID : null, Status : "Available"}})
     if (DBItem!=null) {
         return DBItem
     }
