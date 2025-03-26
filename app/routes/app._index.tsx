@@ -24,7 +24,7 @@ import { GetItem, GetManyItems, ItemType } from "app/models/Item.server";
 
 export async function loader({ request } : LoaderFunctionArgs) {
     const { admin, session } = await authenticate.admin(request);
-    const Items : ItemType[] = await GetManyItems(session.shop, admin.graphql);
+    const Items : ItemType[] = await GetManyItems();
   
     return Response.json({
       Items,
