@@ -5,7 +5,7 @@ import { ItemStatus } from "@prisma/client";
 import { FulfillmentOrder } from "./FulfillmentOrder.server";
 import { FulfillmentRecordType } from "./FulfillmentRecord.server";
 
-const LocationID = "99206562125"
+const LocationID = "105702818133"
 
 export interface ItemType {
     ID : number 
