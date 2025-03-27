@@ -140,7 +140,7 @@ export async function AddManyItems(StartItem: CreateItemType, EndItem: CreateIte
         }
         
     }
-    if (CompletedItems.length==EndItem.ID-StartItem.ID) {
+    if (CompletedItems.length==(EndItem.ID-StartItem.ID)+1) {
         const APIResponse = await AlterStockByVarientID(StartItem.ProductVariantID, CompletedItems.length, StartItem.PurchaseItemID, Admin)
         return CompletedItems
     }
