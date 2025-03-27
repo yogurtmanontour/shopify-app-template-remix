@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://stagewarehouse_app_user:3ySKr2GpnPOmFfF0vUwLnDc3MK4dcgQf@dpg-cvi0pfd2ng1s73a0akbg-a.frankfurt-postgres.render.com/stagewarehouse_app"
+  url      = env("DATABASE_URL")
 }
 
 model Session {

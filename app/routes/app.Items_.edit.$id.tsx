@@ -1,4 +1,4 @@
-import { Bleed, BlockStack, Box, Button, Card, ChoiceList, DatePicker, Divider, FormLayout, Icon, InlineError, InlineStack, Layout, Page, PageActions, Popover, Text, TextField, Thumbnail } from "@shopify/polaris";
+import { Bleed, BlockStack, Box, Button, Card, Checkbox, ChoiceList, DatePicker, Divider, FormLayout, Icon, InlineError, InlineStack, Layout, Page, PageActions, Popover, Text, TextField, Thumbnail } from "@shopify/polaris";
 
 import db from "../db.server";
 import { redirect, useActionData, useLoaderData, useSearchParams, useSubmit } from "@remix-run/react";
@@ -8,7 +8,7 @@ import { GetPurchaseOrder, GetPurchaseOrders, PurchaseOrderType } from "app/mode
 
 import CustomDatePicker from "app/Components/DatePicker";
 import { CreatePurchaseCostType, GetPurchaseCost, PurchaseCostType } from "app/models/PurchaseCost.server";
-import { AddItem, CreateItemErrors, CreateItemType, GetItem, ItemType, validateItem } from "app/models/Item.server";
+import { AddItem, AddManyItems, CreateItemErrors, CreateItemType, GetItem, ItemType, validateItem } from "app/models/Item.server";
 import { authenticate } from "app/shopify.server";
 import { ImageIcon } from "@shopify/polaris-icons";
 
@@ -68,8 +68,17 @@ export async function action({ request, params } : ActionFunctionArgs){
         return Response.json({ ValidationErrors }, { status: 422 });
     }
 
-
-    const CurrentItem = params.id=="new" ? await AddItem(data,admin): await db.item.update({ where: { ID: Number(params.id)}, data })
+    if (params.id=="new") {
+        if ((RequestData.get("IsBulk"))=="true") {
+            let TempObject = structuredClone(data)
+            TempObject.ID=Number(RequestData.get("BulkToBarcode"))
+            await AddManyItems(data,TempObject,admin)
+        } else {
+            await AddItem(data,admin)
+        }
+    } else {
+        await db.item.update({ where: { ID: Number(params.id)}, data })
+    }
     
 
     return redirect(`/app/items/${data.ID}`);
@@ -96,6 +105,9 @@ export default function EditItem(){
     }
     
     const [FormState,SetFormState] = useState(CurrentItem)
+
+    const [IsBulk, SetIsBulk] = useState(false)
+    const [BulkToBarcode,SetBulkToBarcode] = useState(0)
 
     async function selectProduct() {
         const products : any = await window.shopify.resourcePicker({
@@ -130,6 +142,8 @@ export default function EditItem(){
             ProductImage: FormState.ProductImage,
             ProductAlt: FormState.ProductAlt,
             SerialNumber: FormState.SerialNumber,
+            IsBulk : IsBulk,
+            BulkToBarcode : BulkToBarcode
         }
         submit(data, { method: "post" })
     }
@@ -206,6 +220,36 @@ export default function EditItem(){
                         </BlockStack>
                     </Card>
                 </Layout.Section>
+                {   CurrentItem.ID==0?
+                    <Layout.Section>
+                        <Card>
+                            <FormLayout>
+                                <BlockStack gap="200">
+                                    <Checkbox
+                                        label="Bulk Create"
+                                        checked={IsBulk}
+                                        onChange={()=>SetIsBulk(!IsBulk)}
+                                    />
+                                    <TextField 
+                                        type="number"
+                                        id="ID"
+                                        label="End Unique ID"
+                                        autoComplete="off"
+                                        disabled={!IsBulk}
+                                        value={String(BulkToBarcode)}
+                                        onChange={IDString=>{
+                                            let ID = Number(IDString)
+                                            SetBulkToBarcode(ID)
+                                        }}
+                                    />
+                                </BlockStack>
+                            </FormLayout>
+                        </Card>
+                    </Layout.Section>
+                :
+                    null
+                }
+                
                 <Layout.Section>
                     <PageActions
                         primaryAction={

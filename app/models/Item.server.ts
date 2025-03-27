@@ -129,6 +129,24 @@ export async function AddItem(Item: CreateItemType, Admin : AdminApiContextWitho
     return null
 }
 
+export async function AddManyItems(StartItem: CreateItemType, EndItem: CreateItemType, Admin : AdminApiContextWithoutRest) : Promise<ItemType[] | null> {
+    let CompletedItems : ItemType[] = []
+    let PlaceholderItem = structuredClone(StartItem)
+    for (let index = StartItem.ID; index <= EndItem.ID; index++) {
+        PlaceholderItem.ID = index
+        let DBItem = await db.item.create({data: PlaceholderItem})
+        if (DBItem!=null) {
+            CompletedItems.push(DBItem)
+        }
+        
+    }
+    if (CompletedItems.length==EndItem.ID-StartItem.ID) {
+        const APIResponse = await AlterStockByVarientID(StartItem.ProductVariantID, CompletedItems.length, StartItem.PurchaseItemID, Admin)
+        return CompletedItems
+    }
+    return null
+}
+
 export async function DeleteItem(ItemID: number, Admin : AdminApiContextWithoutRest) : Promise<boolean> {
     let DBItem = await db.item.delete({ where: { ID: ItemID } });
     if (DBItem!=null) {
