@@ -65,7 +65,7 @@ export async function action({ request, params } : ActionFunctionArgs){
 }
 
 const LineItemRow = (({LineItem, FulfillmentRecord}:{LineItem : FulfillmentOrderLineItem, FulfillmentRecord : FulfillmentRecordType})=>{
-    const FulfilledItems = FulfillmentRecord.Items.filter(x=>x.ProductVariantID==LineItem.ProductVarientID).length
+    const FulfilledItems = FulfillmentRecord ? FulfillmentRecord.Items.filter(x=>x.ProductVariantID==LineItem.ProductVarientID).length : 0
     const OverallCount = FulfilledItems-LineItem.Quantity
 
     return(
@@ -211,14 +211,14 @@ export default function ViewOrder() {
                         </BlockStack>
                     </Card>
                 </Layout.Section>
-                <Layout.Section>
+                {FulfillmentRecord ? <Layout.Section>
                     <Card>
                         <BlockStack gap="200">
                             <Text as="h2" variant="headingLg" >Fulfillment Record</Text>
                             <FulfillmentRecordTable FulfillmentRecord={FulfillmentRecord} UndoAction={UndoFulfillment}/>
                         </BlockStack>
                     </Card>
-                </Layout.Section>
+                </Layout.Section> : null}
                 <Layout.Section>
                     <Card>
                         <FormLayout>
